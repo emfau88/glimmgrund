@@ -48,7 +48,13 @@ test("Touch play on both entrances, on WebGL and the software renderer", {timeou
       assert.deepEqual((await save()).visit,paused.visit);
       await tap("#pause");await page.clock.runFor(21000);
       assert.equal((await save()).visits,1);assert.equal(await page.locator("#keeper-tag").isVisible(),false);
-      assert.equal((await save()).trails.safe[0],gate);assert.deepEqual(errors,[]);
+      assert.equal((await save()).trails.safe[0],gate);
+      await tap('[data-action="fit"]');await page.clock.runFor(64);
+      await tap('[data-tool="build"]');await tap('[data-blueprint="ward"]');
+      const plot=software?'#ward-marks [data-key="4,-2"]':'[data-target-kind="cell"][data-key="4,-2"]';
+      await tap(plot);
+      assert.equal((await save()).tiles["4,-2"],"ward","Tapping the low floor or its bonus mark builds the watch at the selected gate");
+      assert.deepEqual(errors,[]);
       await context.close();
     }
   } finally {await browser.close();}

@@ -390,8 +390,9 @@ function fit() {
 function floatGain(key,text) {
   if(!screen) return;
   const [q,r]=parseKey(key),p=project(screen,q,.25,r),el=document.createElement("span");
-  el.className="float-gain";el.textContent=text;el.style.left=clamp(p.x,50,screen.w-50)+"px";
-  el.style.top=clamp(p.y,34,screen.h-40)+"px";$("map-fx").append(el);setTimeout(()=>el.remove(),1250);
+  el.className="float-gain";el.textContent=text;el.style.top=clamp(p.y,34,screen.h-40)+"px";
+  $("map-fx").append(el);const margin=el.offsetWidth/2+5;el.style.left=clamp(p.x,margin,screen.w-margin)+"px";
+  setTimeout(()=>el.remove(),1250);
 }
 function clearHover() {
   if(!hoverId && !$("map-label").textContent) return;
@@ -467,6 +468,25 @@ function showBuildPlots() {
   const distance=t=>(t.x-view.q)**2+(t.z-view.r)**2;
   const nearest=floors.reduce((a,b)=>distance(a)<distance(b)?a:b);
   reveal(nearest.x,0,nearest.z,true);layoutWorld();
+}
+function targetAt(x,y) {
+  // A low floor can be partially hidden by the rock face in front of it. Give
+  // its projected centre and its visible strength marker their own touch target.
+  if(mode==="build" && plan && screen) {
+    let best=null, nearest=1;
+    for (const t of targets.values()) {
+      if(t.kind!=="cell" || state.tiles[t.key]!=="floor") continue;
+      const face=t.p;
+      let distance=((x-face.x)/19)**2+((y-face.y)/15)**2;
+      if(plan==="ward") {
+        const mark=project(screen,t.x,.23,t.z);
+        distance=Math.min(distance,((x-mark.x)/16)**2+((y-mark.y+8)/16)**2);
+      }
+      if(distance<nearest) {nearest=distance;best=t;}
+    }
+    if(best) return best.id;
+  }
+  return workerAt(x,y) || renderer.pick(x,y);
 }
 function orderStatus(order) {
   const i=state.shift.crew.findIndex(a=>a?.field===order.key);
@@ -963,7 +983,7 @@ viewport.addEventListener("pointermove",e=>{
   const p=localPoint(e),old=pointers.get(e.pointerId);
   if(!old) {
     if(e.pointerType==="mouse" && performance.now()-lastHover>36) {
-      lastHover=performance.now();setHover(workerAt(p.x,p.y) || renderer.pick(p.x,p.y),true);
+      lastHover=performance.now();setHover(targetAt(p.x,p.y),true);
     }
     return;
   }
@@ -990,7 +1010,7 @@ function releasePointer(e) {
   if(viewport.hasPointerCapture(e.pointerId)) viewport.releasePointerCapture(e.pointerId);
   if(!pointers.size) viewport.classList.remove("dragging");
   if(!tap) {scheduleView();return;}
-  const id=workerAt(p.x,p.y) || renderer.pick(p.x,p.y),target=targets.get(id);
+  const target=targets.get(targetAt(p.x,p.y));
   if(target) worldOrder(()=>activateTarget(target.kind,target.key));
 }
 viewport.addEventListener("pointerup",releasePointer);

@@ -3246,9 +3246,10 @@ dialog::backdrop { background: #0e0b13aa; backdrop-filter: blur(4px); }
     const [q, r] = parseKey(key), p = project(screen, q, 0.25, r), el = document.createElement("span");
     el.className = "float-gain";
     el.textContent = text;
-    el.style.left = clamp(p.x, 50, screen.w - 50) + "px";
     el.style.top = clamp(p.y, 34, screen.h - 40) + "px";
     $("map-fx").append(el);
+    const margin = el.offsetWidth / 2 + 5;
+    el.style.left = clamp(p.x, margin, screen.w - margin) + "px";
     setTimeout(() => el.remove(), 1250);
   }
   function clearHover() {
@@ -3348,6 +3349,26 @@ dialog::backdrop { background: #0e0b13aa; backdrop-filter: blur(4px); }
     const nearest = floors.reduce((a, b) => distance(a) < distance(b) ? a : b);
     reveal(nearest.x, 0, nearest.z, true);
     layoutWorld();
+  }
+  function targetAt(x, y) {
+    if (mode === "build" && plan && screen) {
+      let best = null, nearest = 1;
+      for (const t of targets.values()) {
+        if (t.kind !== "cell" || state.tiles[t.key] !== "floor") continue;
+        const face = t.p;
+        let distance = ((x - face.x) / 19) ** 2 + ((y - face.y) / 15) ** 2;
+        if (plan === "ward") {
+          const mark = project(screen, t.x, 0.23, t.z);
+          distance = Math.min(distance, ((x - mark.x) / 16) ** 2 + ((y - mark.y + 8) / 16) ** 2);
+        }
+        if (distance < nearest) {
+          nearest = distance;
+          best = t;
+        }
+      }
+      if (best) return best.id;
+    }
+    return workerAt(x, y) || renderer.pick(x, y);
   }
   function orderStatus(order) {
     const i = state.shift.crew.findIndex((a) => a?.field === order.key);
@@ -4046,7 +4067,7 @@ dialog::backdrop { background: #0e0b13aa; backdrop-filter: blur(4px); }
     if (!old) {
       if (e.pointerType === "mouse" && performance.now() - lastHover > 36) {
         lastHover = performance.now();
-        setHover(workerAt(p.x, p.y) || renderer.pick(p.x, p.y), true);
+        setHover(targetAt(p.x, p.y), true);
       }
       return;
     }
@@ -4083,7 +4104,7 @@ dialog::backdrop { background: #0e0b13aa; backdrop-filter: blur(4px); }
       scheduleView();
       return;
     }
-    const id = workerAt(p.x, p.y) || renderer.pick(p.x, p.y), target = targets.get(id);
+    const target = targets.get(targetAt(p.x, p.y));
     if (target) worldOrder(() => activateTarget(target.kind, target.key));
   }
   viewport.addEventListener("pointerup", releasePointer);
