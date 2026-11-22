@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#19161f">
+  <meta name="description" content="Grabe Stollen, entdecke verborgene Grotten und baue in Glimmgrund ein Zuhause für deine Höhlenbewohner.">
+  <title>Glimmgrund · Die Mooswiege</title>
+  <link rel="icon" href="data:,">
+  <style>/* GAME_STYLE */</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><img data-art="lantern" alt="" width="44" height="48"><span>Glimmgrund</span></div>
+    <div class="resources" aria-label="Vorräte">
+      <button class="resource" data-stock="gold"><img data-art="gold" alt=""><span class="stock-figures"><strong id="gold">80</strong><em class="stock-rate" id="rate-gold"></em><small>Gold</small></span></button>
+      <button class="resource" data-stock="food"><img data-art="food" alt=""><span class="stock-figures"><strong id="food">24</strong><em class="stock-rate" id="rate-food"></em><small>Nahrung</small></span></button>
+      <button class="resource" data-stock="crystal"><img data-art="crystal" alt=""><span class="stock-figures"><strong id="crystal">8</strong><em class="stock-rate" id="rate-crystal"></em><small>Kristalle</small></span></button>
+    </div>
+    <div class="clock-controls">
+      <button class="day-control" id="day-button" data-action="calendar" title="Tagesübersicht öffnen"><span data-icon="sun"></span><span id="day-text">Tag 1</span></button>
+      <span class="head-rule"></span>
+      <button class="icon-button" id="pause" data-action="pause" title="Spielzeit anhalten" aria-label="Spielzeit anhalten"><span data-icon="pause"></span></button>
+      <button class="icon-button" id="settings" data-action="settings" title="Einstellungen" aria-label="Einstellungen"><span data-icon="settings"></span></button>
+    </div>
+  </header>
+
+  <main class="game-layout">
+    <section class="stage" aria-labelledby="map-title">
+
+      <div class="place-heading">
+        <div class="level-line"><i></i> EBENE 01</div>
+        <h1 id="map-title">Die Mooswiege</h1>
+        <div class="visit-controls"><button class="peace" id="peace" data-action="visit"><span data-icon="beetle"></span><span>Käferpfade</span></button>
+          <button class="escort-now" id="escort-now" data-action="visit-guard" hidden>Brumm rufen</button></div>
+        <button class="map-goal" id="map-goal" data-action="book"><span data-icon="flag"></span><span id="goal-label">Markiere zwei Felsen für Pip</span><b id="goal-count">0/2</b></button>
+        <button class="order-button" id="orders-toggle" data-action="orders" hidden><span data-icon="pick"></span><span id="orders-count"></span></button>
+        <button class="quick-harvest" id="quick-harvest" data-action="quick-harvest" hidden><span data-icon="sprout"></span><span id="quick-label">Pilze pflücken</span></button>
+      </div>
+      <div class="map-menu">
+        <button id="book-toggle" class="book-toggle" data-action="book" aria-haspopup="dialog" aria-controls="book-dialog" aria-expanded="false"><span data-icon="book"></span>Höhlenbuch</button>
+        <button class="help-button icon-button" data-action="help" title="Spielhilfe" aria-label="Spielhilfe"><span data-icon="help"></span></button>
+      </div>
+      <div class="map-window" id="map-window" tabindex="0" role="group" aria-label="Drehbare Höhlenkarte. Goldene Felskanten lassen sich graben.">
+        <canvas id="cave-gl" aria-hidden="true"></canvas>
+        <canvas id="cave-cpu" aria-hidden="true" hidden></canvas>
+        <canvas id="cave-crew" aria-hidden="true"></canvas>
+        <canvas id="cave-air" aria-hidden="true"></canvas>
+        <div id="map-pins"></div><div id="map-label" aria-hidden="true" hidden></div>
+        <div id="order-marks" aria-hidden="true"></div><div id="ward-marks" aria-hidden="true"></div><div id="map-fx" aria-hidden="true"></div>
+        <span id="keeper-tag" hidden aria-hidden="true"></span>
+      </div>
+      <div id="entry-signs" aria-label="Wege in den Berg">
+        <button class="entry-sign moss" data-sign="moss"><span data-icon="sprout"></span><span>Leuchtsporen</span></button>
+        <button class="entry-sign copper" data-sign="copper"><span data-icon="gem"></span><span>Goldader</span></button>
+        <span id="first-seam" aria-hidden="true" hidden></span>
+      </div>
+      <div class="compass" aria-hidden="true"><span>N</span><div class="compass-rose"><b></b><i></i></div></div>
+      <div class="zoom-controls" role="group" aria-label="Kartenansicht">
+        <button data-action="rotate" aria-label="Karte um 90 Grad drehen" title="Karte drehen (Q / E)"><span data-icon="rotate"></span></button>
+        <button data-action="zoom-in" aria-label="Vergrößern" title="Vergrößern"><span data-icon="plus"></span></button>
+        <button data-action="zoom-out" aria-label="Verkleinern" title="Verkleinern"><span data-icon="minus"></span></button>
+        <button data-action="fit" aria-label="Karte einpassen" title="Karte einpassen"><span data-icon="focus"></span></button>
+      </div>
+      <div class="tool-area">
+        <div class="tool-dock" role="toolbar" aria-label="Werkzeuge">
+          <button class="tool active" data-tool="dig" aria-pressed="true" aria-keyshortcuts="1"><kbd>1</kbd><img data-art="pick" alt=""><span>Graben</span></button>
+          <button class="tool" data-tool="build" aria-pressed="false" aria-keyshortcuts="2"><kbd>2</kbd><img data-art="house" alt=""><span>Bauen</span></button>
+          <button class="tool" data-tool="recruit" aria-pressed="false" aria-keyshortcuts="3"><kbd>3</kbd><img data-art="miner" alt=""><span>Anwerben</span></button>
+          <button class="tool" data-tool="look" aria-pressed="false" aria-keyshortcuts="4"><kbd>4</kbd><img data-art="lantern" alt=""><span>Erkunden</span></button>
+        </div>
+        <p class="tool-tip"><span data-icon="pointer"></span><span id="tool-hint">Fels antippen, um Grabaufträge zu markieren.</span></p>
+        <div id="notice" class="notice" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+  </main>
+  <dialog id="book-dialog" aria-labelledby="ledger-title">
+    <aside class="ledger">
+      <div class="ledger-header"><span class="book-icon" data-icon="book"></span><h2 id="ledger-title">Höhlenbuch</h2><i class="end-diamond"></i><button class="book-close icon-button" data-action="close-book" aria-label="Höhlenbuch schließen"><span data-icon="close"></span></button></div>
+      <div class="ledger-tabs" role="tablist" aria-label="Höhlenbuch">
+        <button id="tab-overview" role="tab" aria-selected="true" aria-controls="overview" data-tab="overview">Übersicht</button>
+        <button id="tab-journal" role="tab" aria-selected="false" aria-controls="journal" data-tab="journal" tabindex="-1">Chronik<span class="unread" hidden></span></button>
+      </div>
+      <div id="overview" role="tabpanel" aria-labelledby="tab-overview">
+        <section class="quest" id="quest"></section>
+        <section class="residents-section">
+          <div class="section-title"><h3>Bewohner</h3><span class="capacity" id="capacity"></span></div>
+          <div class="resident-list" id="residents"></div>
+          <button class="secondary" data-action="crew">Bewohner einteilen</button>
+        </section>
+        <button class="encounter" data-action="visit" id="encounter"></button>
+      </div>
+      <div id="journal" role="tabpanel" aria-labelledby="tab-journal" hidden><div id="journal-entries"></div></div>
+    </aside>
+  </dialog>
+  <dialog id="dialog" aria-labelledby="dialog-title">
+    <div class="dialog-body">
+      <button type="button" class="dialog-close icon-button" data-action="close" aria-label="Schließen" title="Schließen"><span data-icon="close"></span></button>
+      <header class="dialog-heading"><div id="dialog-kicker"></div><h2 id="dialog-title"></h2></header>
+      <div id="dialog-content"></div>
+    </div>
+  </dialog>
+
+  <script id="assets" type="application/json">GAME_ART</script>
+  <script>/* GAME_CODE */</script>
+  <script type="application/json" id="bildnachweise">
+{
+  "werkzeug": "ImageGen, integrierte Bildgenerierung",
+  "prompts": {
+    "bewohner_und_inventar": "Use case: stylized-concept. A production inventory sprite sheet for a cozy underground colony strategy video game, square format, a strict invisible THREE COLUMN by THREE ROW grid of nine isolated, different game icons. Each object or bust stays fully inside its perfectly equal cell, centered at x 16.7%, 50%, or 83.3% and y 16.7%, 50%, or 83.3%, with generous dark margin. Completely flat solid deep muted plum background hex #221d29, continuous across the entire sheet. No typography, letters, labels, borders, boxes, gridlines, or numbers. Beautifully sculpted miniatures, chunky hand painted fantasy shapes, soft warm rim lighting, highly expressive restrained and rustic, teal, amber, plum and mineral colours, coherent high-quality illustrated game inventory art. Top row is three distinct front-three-quarter face-and-shoulders character portraits with endearing, mature folklore faces: LEFT a small moss-green goblin miner with enormous pointed ears and ochre leather mining cap with a glowing headlamp; MIDDLE a friendly rosy tan mushroom-person gardener with a large dusky red mushroom cap, a pale round face and sage scarf; RIGHT a gentle sturdy blue-gray rock golem guard with carved eyebrows, a little clump of moss on head and a thick bronze shoulder guard. Middle row isolated inventory resources: LEFT a small glinting stack of three angular gold ingots with one sparkle; MIDDLE three edible plump rosy-copper mushrooms with ivory stems; RIGHT a cluster of three translucent purple amethyst crystals. Bottom row isolated tools: LEFT a diagonal well-used artisan's pickaxe, luminous steel curved blade pointing left and warm brown handle pointing bottom-left; MIDDLE a miniature round arched door in a stone-and-oak underground dwelling with warm lit window and a blue-green shingle roof; RIGHT a single exquisite warmly glowing antique brass and copper mining lantern, three-quarter angle, a brass hanging ring at the top, glass with an amber flame. All nine subjects read clearly at very small sizes. Paint on the same plain plum background all the way around each silhouette, no pedestals, no ground planes.",
+    "bausteine": "Use case: stylized-concept. A modular ISOMETRIC TERRAIN TILESET sprite sheet for the playable mining grid of a gentle fantasy underground village game. Square image, transparent background. STRICTLY nine small independent complete floating isometric square tiles in a uniform invisible 3 by 3 grid, one centered per equal cell, identical scale and exact same 2:1 dimetric camera facing a front point. All tiles are fully visible with transparent gutters, never touch. Each diamond-shaped footprint has width 84% of its cell and diamond-face height half its width, with a thin band of purple-gray layered stone beneath. Professional cozy hand-painted 3D diorama art, clean silhouettes, plum shale, warmly lit stone, teal moss, little bits of amber, friendly atmosphere, no text or labels or grid lines. Row 1 from left: 1) a closed diggable boulder tile covered with slightly raised faceted violet slate blocks and a little moss; 2) the same low closed gray purple rock tile with little seams of golden ore; 3) the same closed rock tile with small amethyst crystal seams. Row 2 from left: 1) a freshly mined empty walkable tunnel floor tile with flat warm tan paving stones, no props and no wall; 2) a square stone farm plot of small coral and lilac edible mushrooms, teal moss and small rustic fence; 3) a small cozy bedchamber hut with teal shingled curved roof, tiny chimney and light glowing in a round wooden door on the same stone tile footprint. Row 3 from left: 1) a little wooden guard post with shield, green cloth canopy and small brass lantern; 2) an ancient forgotten grotto with a slender luminous lavender crystal shrine, moss and stone ruins; 3) an arched mine entrance in slate rocks, timber lintel, warm lantern and a short stretch of minecart track coming toward viewer on the same tile footprint. Orient all square bases identically, left and right tips aligned horizontally. Do not output an assembled landscape, each cell contains one separate modular tile sprite. No drop shadows outside each tile.",
+    "3d_materialien": "Use case: stylized-concept. A production-quality hand-painted diffuse material texture atlas for a cozy miniature underground village 3D game. Landscape canvas, exactly THREE columns by TWO rows of equal square swatches, touching edge to edge, no margins or gutters, no separators, no text. Each square is a flat, straight-on seamless surface texture only, like an unlit albedo texture painted by an environment artist. Keep the material details large enough to read on a phone. TOP LEFT: weathered blue-green teal glazed overlapping roof shingles with round scalloped ends, four staggered horizontal courses, subtly chipped turquoise edges and varied dark jade tiles. TOP CENTER: warm honey-umber sandstone masonry wall with irregular chunky rectangular blocks, thin deep umber mortar, little chipped corners. TOP RIGHT: aged chestnut oak planks with expressive flowing grain, knots and fine splits, grain running horizontally. BOTTOM LEFT: top-down soft tan and russet cobblestone floor, varied large shapes of rounded stone and slender dark seams. BOTTOM CENTER: rugged layered natural violet slate cave cliff surface, charcoal plum and muted indigo stone strata with diagonal splits and fine mineral streaks. BOTTOM RIGHT: velvet dark teal moss and warm earthy loam, flecked with tiny sage leaves. All six swatches rustic and tactile, rich local colour, hand painted for high end stylized fantasy miniatures, soft painterly edges with strong material identity. Each is perfectly flat and fills its entire square. NO lighting gradients, cast shadows, objects, buildings, illustrations of scenes, perspective, frames, or letters. 1536 by 1024.\n",
+    "pilz_kupfer_kristall": "A material texture sheet for the albedo of three different real-time 3D miniatures in a cozy subterranean fantasy game. Wide landscape exactly 3:1 aspect ratio, three equally sized square swatches in one horizontal row, edge to edge, each fills its entire square. No borders, no text, no specimen objects, just flat high quality hand-painted material surfaces. LEFT square: the surface skin of a muted rose-plum wild mushroom cap viewed as a material sample, soft fine radial fibers and slight natural lighter freckles, subtle mottled color and brushwork, no circular object silhouettes and no large polka dots. CENTER square: beautiful aged burnished mine copper sheet, warm chestnut reddish patina, gently mottled polished highlights, fine scratches and rare turquoise oxidation at a few shallow dimples. No wood grain, no rivets or plate outlines. RIGHT square: translucent natural amethyst gemstone material surface with long subtle vertical mineral bands, fine pale lilac refractive striations and a few small glint streaks; a slice through a purple crystal face, no individual crystal objects. All three are diffuse colour maps with softly varied local surface detail. Tactile artisan-painted stylized materials with no directional cast shadows and no scenery.\n"
+  }
+}
+</script>
+  <!-- Embedded font licenses
+Copyright 2017 The Spectral Project Authors (https://github.com/productiontype/Spectral)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+https://openfontlicense.org
+
+
+—————————————————————————————-
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+—————————————————————————————-
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded,
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting — in part or in whole — any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+
+Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+https://scripts.sil.org/OFL
+
+
+—————————————————————————————-
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+—————————————————————————————-
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded,
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting — in part or in whole — any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+
+-->
+</body>
+</html>

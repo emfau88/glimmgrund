@@ -22,6 +22,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Einzeldatei bauen und mit dem Commit vergleichen
+        run: |
+          npm run build
+          git diff --exit-code -- index.html
+      - name: Simulation und Touchbedienung prüfen
+        run: |
+          npx --no-install playwright-core install --with-deps --only-shell chromium
+          npm test
       - uses: actions/configure-pages@v5
       - name: Spiel bereitstellen
         run: |

@@ -1,0 +1,13 @@
+{
+  "name": "glimmgrund",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "playwright-core": "1.60.0"
+  }
+}
